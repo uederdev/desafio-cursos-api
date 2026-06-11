@@ -1,3 +1,23 @@
 spring:
   application:
     name: cursos
+  datasource:
+    url: jdbc:postgresql://localhost:5432/db_cursos
+    username: admin
+    password: 1234
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    show-sql: true
+    database: POSTGRESQL
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
