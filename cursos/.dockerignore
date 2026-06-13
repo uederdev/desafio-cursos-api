@@ -1,0 +1,141 @@
+target/
+.git/
+.idea/
+*.iml
+.mvn/wrapper/maven-wrapper.jar
+README.md
+docker-compose.yml
+*.db
+*.sqlite
+
+devem ficar no **`.dockerignore`** ou no **`.gitignore`**, não dentro do `Dockerfile`.  
+Se você colocou isso no `Dockerfile`, o erro `<attribute list> expected` acontece porque esse conteúdo não é sintaxe válida de Dockerfile.
+
+---
+
+## Ajuste importante no `application.yaml`
+
+Dentro de container, `localhost` aponta para o próprio container da aplicação, não para o PostgreSQL.
+
+Atualmente você tem algo assim:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/db_cursos
+```
+
+Se você for usar Docker Compose com um serviço chamado `postgres`, o ideal é deixar configurável por variável de ambiente:
+
+<llm-snippet-file>application.yaml</llm-snippet-file>
+```yaml
+spring:
+  application:
+    name: cursos
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/db_cursos}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    show-sql: true
+    database: POSTGRESQL
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+```
+
+Assim sua aplicação funciona tanto localmente quanto via Docker.
+
+---
+
+## Comandos para usar
+
+Na raiz do projeto:
+
+```bash
+docker build -t api-cursos .
+```
+
+Depois rode:
+
+```bash
+docker run -p 8080:8080 api-cursos
+```
+
+Mas atenção: se o PostgreSQL não estiver rodando ou acessível, a aplicação pode iniciar com erro de conexão no banco.
+
+---
+
+## Dockerfile alternativo simples
+
+Se você preferir gerar o `.jar` antes com Maven, pode usar este Dockerfile mais simples:
+
+```dockerfile
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+COPY target/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+Nesse caso, antes do `docker build`, execute:
+
+```bash
+.\mvnw.cmd clean package -DskipTests
+```
+
+Depois:
+
+```bash
+docker build -t api-cursos .
+```
+
+---
+
+## Minha recomendação
+
+Use este como seu **Dockerfile principal**:
+
+```dockerfile
+FROM eclipse-temurin:21-jdk AS build
+
+WORKDIR /app
+
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline
+
+COPY src src
+
+RUN ./mvnw clean package -DskipTests
+
+
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+Ele é mais completo e garante que a imagem Docker seja construída de forma consistente, mesmo em outra máquina.

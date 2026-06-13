@@ -1,4 +1,4 @@
-package br.com.desafio.cursos.model;
+package br.com.desafio.cursos.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -78,6 +78,10 @@ public class CursoModel implements Serializable {
 
     public void active() {
         this.active = true;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public void inactive() {

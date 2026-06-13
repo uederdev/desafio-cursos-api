@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Configurações Globais
+*.env
+
+# Database files
+/db_data/
+*.db
+*.sqlite

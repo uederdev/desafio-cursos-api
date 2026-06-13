@@ -1,13 +1,37 @@
-version: '3.9'
 services:
-  db:
-    image: postgres:14.4-alpine
-    restart: always
+  postgres:
+    image: postgres:14-alpine
+    container_name: cursos-postgres
     environment:
+      POSTGRES_DB: db_cursos
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: db_cursos
     ports:
-      - 5432:5432
+      - "5432:5432"
     volumes:
-      - ./db:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - cursos-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cursos-api
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/db_cursos
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: 1234
+    ports:
+      - "8081:8080"
+    networks:
+      - cursos-network
+
+volumes:
+  db_data:
+
+networks:
+  cursos-network:
+    driver: bridge
